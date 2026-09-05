@@ -1,0 +1,107 @@
+name: Build HISSA APK
+
+on:
+
+  workflow_dispatch:
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+
+        uses: actions/setup-java@v4
+
+        with:
+
+          distribution: temurin
+
+          java-version: "17"
+
+      - name: Setup Flutter
+
+        uses: subosito/flutter-action@v2
+
+        with:
+
+          channel: stable
+
+      - name: Extract HISSA project
+
+        run: |
+
+          unzip -q HISSA_V1_Complete_Android_Project.zip -d app
+
+          cd app
+
+          if [ "$(find . -maxdepth 1 -type f -name pubspec.yaml | wc -l)" -eq 0 ]; then
+
+            PROJECT_DIR=$(find . -name pubspec.yaml -print -quit | xargs dirname)
+
+            cd "$PROJECT_DIR"
+
+          fi
+
+          echo "PROJECT_PATH=$(pwd)" >> $GITHUB_ENV
+
+      - name: Fix Android Gradle compatibility
+
+        run: |
+
+          cd "$PROJECT_PATH"
+
+          if [ -f android/settings.gradle.kts ]; then
+
+            sed -i 's/id("com.android.application") version "[^"]*"/id("com.android.application") version "8.7.3"/' android/settings.gradle.kts
+
+          fi
+
+          if [ -f android/settings.gradle ]; then
+
+            sed -i "s/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.7.3/g" android/settings.gradle
+
+          fi
+
+          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
+
+            sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-bin.zip#' android/gradle/wrapper/gradle-wrapper.properties
+
+          fi
+
+      - name: Get dependencies
+
+        run: |
+
+          cd "$PROJECT_PATH"
+
+          flutter clean
+
+          flutter pub get
+
+      - name: Build APK
+
+        run: |
+
+          cd "$PROJECT_PATH"
+
+          flutter build apk --release
+
+      - name: Upload APK
+
+        uses: actions/upload-artifact@v4
+
+        with:
+
+          name: HISSA-V1-APK
+
+          path: ${{ env.PROJECT_PATH }}/build/app/outputs/flutter-apk/app-release.apk
+
+          if-no-files-found: error
