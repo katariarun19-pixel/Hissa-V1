@@ -1,0 +1,31 @@
+name: Build HISSA APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Extract project
+        run: |
+          unzip -q HISSA_V1_Complete_Android_Project.zip -d extracted
+          PROJECT_DIR=$(find extracted -maxdepth 1 -type d | tail -n 1)
+          cd "$PROJECT_DIR"
+          flutter pub get
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HISSA-V1-APK
+          path: extracted/**/build/app/outputs/flutter-apk/app-release.apk
