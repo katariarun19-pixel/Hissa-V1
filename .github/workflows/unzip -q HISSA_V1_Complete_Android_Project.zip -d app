@@ -1,0 +1,101 @@
+name: Build HISSA APK
+
+on:
+
+  workflow_dispatch:
+
+jobs:
+
+  build:
+
+    name: Build APK
+
+    runs-on: ubuntu-22.04
+
+    steps:
+
+      - name: Checkout repository
+
+        uses: actions/checkout@v4
+
+      - name: Find project ZIP
+
+        run: |
+
+          find . -maxdepth 2 -type f -name "*.zip"
+
+      - name: Extract project
+
+        run: |
+
+          mkdir -p project
+
+          ZIP_FILE=$(find . -maxdepth 2 -type f -name "*.zip" | head -n 1)
+
+          echo "Using ZIP: $ZIP_FILE"
+
+          unzip -q "$ZIP_FILE" -d project
+
+      - name: Locate Flutter project
+
+        run: |
+
+          PROJECT_DIR=$(find project -name pubspec.yaml -exec dirname {} \; | head -n 1)
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+
+          echo "Flutter project found at: $PROJECT_DIR"
+
+      - name: Set up Java
+
+        uses: actions/setup-java@v4
+
+        with:
+
+          distribution: temurin
+
+          java-version: "17"
+
+      - name: Set up Flutter
+
+        uses: subosito/flutter-action@v2
+
+        with:
+
+          flutter-version: "3.24.5"
+
+          channel: stable
+
+          cache: true
+
+      - name: Flutter doctor
+
+        run: flutter doctor -v
+
+      - name: Get dependencies
+
+        working-directory: ${{ env.PROJECT_DIR }}
+
+        run: flutter pub get
+
+      - name: Clean project
+
+        working-directory: ${{ env.PROJECT_DIR }}
+
+        run: flutter clean
+
+      - name: Build release APK
+
+        working-directory: ${{ env.PROJECT_DIR }}
+
+        run: flutter build apk --release
+
+      - name: Upload APK
+
+        uses: actions/upload-artifact@v4
+
+        with:
+
+          name: HISSA-APK
+
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
