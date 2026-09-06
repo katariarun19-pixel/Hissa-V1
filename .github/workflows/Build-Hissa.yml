@@ -1,0 +1,81 @@
+name: Build HISSA APK
+
+on:
+
+  workflow_dispatch:
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-22.04
+
+    steps:
+
+      - name: Checkout
+
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+
+        uses: actions/setup-java@v4
+
+        with:
+
+          distribution: temurin
+
+          java-version: "17"
+
+      - name: Setup Flutter
+
+        uses: subosito/flutter-action@v2
+
+        with:
+
+          flutter-version: "3.24.5"
+
+          cache: true
+
+      - name: Extract HISSA project
+
+        run: |
+
+          unzip -q HISSA_V1_FINAL_CLEAN_BUILD.zip -d extracted
+
+          PROJECT_DIR=$(find extracted -name pubspec.yaml -exec dirname {} \; | head -n 1)
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+
+          echo "Project found: $PROJECT_DIR"
+
+      - name: Create Android platform
+
+        working-directory: ${{ env.PROJECT_DIR }}
+
+        run: |
+
+          flutter create --platforms=android .
+
+      - name: Get dependencies
+
+        working-directory: ${{ env.PROJECT_DIR }}
+
+        run: flutter pub get
+
+      - name: Build APK
+
+        working-directory: ${{ env.PROJECT_DIR }}
+
+        run: flutter build apk --release
+
+      - name: Upload APK
+
+        uses: actions/upload-artifact@v4
+
+        with:
+
+          name: HISSA-V1-APK
+
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+
+          if-no-files-found: error
